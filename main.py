@@ -15,7 +15,7 @@ class Dir(IntEnum):
 env = gym.make("CliffWalking-v0", render_mode="human")
 
 #variable declaration
-POPULATION_SIZE = 150
+POPULATION_SIZE = 100
 MOVES_QUANTITY = 18
 WIDTH = 12
 
@@ -28,31 +28,35 @@ def getRandomDir():
     random.choice(list(Dir))
 
 #function for calculating fitness
-def calculateFitness(row, col, movesCount):
+def calculateFitness(row, col):
     rowDifference = 3 - row
     colDifference = 12 - col
-    return 50 - rowDifference - colDifference - movesCount
+    return 50 - rowDifference - colDifference
 
 #create initial population
 population = [Individual([random.randint(0, 3) for _ in range(MOVES_QUANTITY)], -1, False) for _ in range(POPULATION_SIZE)]
 
 iterator = -1
-movesCount = 0
-
 row = 3
 col = 0
 
 for individual in population:
     iterator += 1
     print(str(iterator) + ": ", end="")
+    prevCol = 0
     for move in individual.moves:
-        movesCount += 1
         state, *_ = env.step(move)
         row = state // WIDTH
         col = state % WIDTH
         print(str(move) + ", ", end="")
+        if prevCol != 0 and col == 0 and row == 3:
+            individual.fitness = 0
+            break
+        prevCol = col
     print()
-    individual.fitness = calculateFitness(row, col, movesCount)
-    print("fitness:" + str(individual.fitness))
     env.reset()
-    movesCount = 0
+    if individual.fitness == 0:
+        print("individual has fallen")
+        continue
+    individual.fitness = calculateFitness(row, col)
+    print("fitness:" + str(individual.fitness))
