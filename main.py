@@ -1,5 +1,8 @@
+import os
 import random
 import sys
+import time
+import json
 
 import gymnasium as gym
 from enum import IntEnum
@@ -19,6 +22,7 @@ env = gym.make("CliffWalking-v0", render_mode=None)
 POPULATION_SIZE = 100
 MOVES_QUANTITY = 18
 WIDTH = 12
+FILENAME = 'data.json'
 
 random.seed(0)
 state, info = env.reset()
@@ -97,44 +101,81 @@ def rouletteSelArray(p:list[Individual]):
         index += 1
     return probabilityArray
 
+#function for displaying invidual's move sequence
+def showMoves(i: Individual):
+    env1 = gym.make("CliffWalking-v0", render_mode="human")
+    _, info1 = env1.reset()
+    for move1 in i.moves:
+        state1, *_ = env1.step(move1)
+    time.sleep(2)
+    env1.close()
+
+#function for appending data to .json file
+def saveToJSON(i: Individual, pp: int):
+    new_data = {
+        "population": pp,
+        "best fitness": i.fitness,
+        "move combination": i.moves,
+    }
+    if os.path.exists(FILENAME):
+        with open(FILENAME, "r") as f:
+            try:
+                data = json.load(f)
+            except json.decoder.JSONDecodeError:
+                data = []
+    else:
+        data = []
+
+    data.append(new_data)
+    with open(FILENAME, "w") as f:
+        json.dump(data, f)
+
+    print("Saved to " + FILENAME)
+
+#function to remove old data.json file
+def removeOldDataFile():
+    if os.path.exists(FILENAME):
+        os.remove(FILENAME)
+
 #create initial population
 population = [Individual(genRandMovesSequence()) for _ in range(POPULATION_SIZE)]
 
+#clear old data file
+removeOldDataFile()
+
+#set up main loop variables
 reachedGoal = False
 populationId = -1
 
 while not reachedGoal:
     populationId += 1
-    bestFitness = 0
+    bestIndividual = population[0]
     iterator = -1
     for individual in population:
         iterator += 1
-        # print(str(iterator) + ": ", end="")
         for move in individual.moves:
             state, *_ = env.step(move)
             individual.setPos(state)
-            # print(str(move) + ", ", end="")
             if didFall(individual):
                 individual.fitness = 0
                 break
             individual.prevCol = individual.col
 
-        # print()
         env.reset()
         if individual.fitness == 0:
-            # print("individual has fallen")
             continue
         individual.fitness = calculateFitness(individual)
         if individual.fitness == 20:
             reachedGoal = True
-            print("individual has won! his steps:")
-            for move in individual.moves:
-                print(str(move) + ", ", end="")
-        if individual.fitness > bestFitness:
-            bestFitness = individual.fitness
-        #print("fitness:" + str(individual.fitness))
+            saveToJSON(individual, populationId)
+            print("individual has won!")
+            time.sleep(2)
+            showMoves(individual)
+            sys.exit()
+        if individual.fitness > bestIndividual.fitness:
+            bestIndividual = individual
 
     np = crossover(population)
     population = np
     mutate(population)
-    print("population: ", populationId, "best fitness: ", bestFitness)
+    saveToJSON(bestIndividual, populationId)
