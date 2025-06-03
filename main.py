@@ -6,6 +6,9 @@ import json
 
 import gymnasium as gym
 from enum import IntEnum
+
+import numpy as np
+
 from inidvidual import Individual
 
 #enum for directions
@@ -20,21 +23,22 @@ env = gym.make("CliffWalking-v0", render_mode=None)
 
 #variable declaration
 POPULATION_SIZE = 100
-MOVES_QUANTITY = 18
+MOVES_QUANTITY = 21
 WIDTH = 12
 FILENAME = 'data.json'
+SEED = 0
 
-random.seed(0)
+rng = np.random.default_rng(seed = SEED)
 state, info = env.reset()
 env.render()
 
 #function for getting random dir
 def getRandomDir():
-    random.choice(list(Dir))
+    rng.integers(0, 4)
 
 #function for getting random moves sequence
 def genRandMovesSequence():
-    return [random.randint(0, 3) for _ in range(MOVES_QUANTITY)]
+    return rng.integers(0, 4, size = MOVES_QUANTITY).tolist()
 
 #function for checking if the individual has fallen
 def didFall(i: Individual):
@@ -60,8 +64,8 @@ def crossover(p:list[Individual]):
     newPopulation: list[Individual] = []
     bestIndividualCount = round(POPULATION_SIZE * 0.05)
     for i in range(POPULATION_SIZE - bestIndividualCount):
-        parent1: Individual = random.choice(probabilityArray)
-        parent2 = random.choice(probabilityArray)
+        parent1: Individual = rng.choice(probabilityArray)
+        parent2 = rng.choice(probabilityArray)
         childMoves: list[int] = []
         for m in range(MOVES_QUANTITY):
             if m < MOVES_QUANTITY/2:
@@ -86,9 +90,10 @@ def findBestIndividuals(p: list[Individual]):
 #function for mutation
 def mutate(p: list[Individual]):
     for i in p:
-        for index, _ in enumerate(i.moves):
-            if random.random() < 0.05:
-                i.moves[index] = random.randint(0, 3)
+        for index, currentMove in enumerate(i.moves):
+            if rng.random() < 0.05:
+                possibleMoves = [m for m in range(4) if m != currentMove]
+                i.moves[index] = rng.choice(possibleMoves)
 
 #function for creating array for roulette selection
 def rouletteSelArray(p:list[Individual]):
