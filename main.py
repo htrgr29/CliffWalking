@@ -25,7 +25,7 @@ env = gym.make("CliffWalking-v0", render_mode=None)
 POPULATION_SIZE = 100
 MOVES_QUANTITY = 21
 WIDTH = 12
-FILENAME = 'data.json'
+FILENAME = 'generation'
 SEED = 0
 
 rng = np.random.default_rng(seed = SEED)
@@ -116,45 +116,43 @@ def showMoves(i: Individual):
     env1.close()
 
 #function for appending data to .json file
-def saveToJSON(i: Individual, pp: int):
-    new_data = {
-        "population": pp,
-        "best fitness": i.fitness,
-        "move combination": i.moves,
-    }
-    if os.path.exists(FILENAME):
-        with open(FILENAME, "r") as f:
-            try:
-                data = json.load(f)
-            except json.decoder.JSONDecodeError:
-                data = []
-    else:
-        data = []
+def saveToJSON(p: list[Individual], pp: int):
+    currFileName = FILENAME + str(pp) + '.json'
 
-    data.append(new_data)
-    with open(FILENAME, "w") as f:
+    if os.path.exists(currFileName):
+        removeOldDataFile(currFileName)
+
+    data = []
+
+    for i in p:
+        if (i.fitness < 0):
+            break
+
+        i_data = {
+            "fitness": int(i.fitness),
+            "move combination": [int(m) for m in i.moves],
+        }
+        data.append(i_data)
+
+    with open(currFileName, "w") as f:
         json.dump(data, f)
 
-    print("Saved to " + FILENAME)
+    print("Saved to " + currFileName)
 
 #function to remove old data.json file
-def removeOldDataFile():
-    if os.path.exists(FILENAME):
-        os.remove(FILENAME)
+def removeOldDataFile(currFileName):
+    if os.path.exists(currFileName):
+        os.remove(currFileName)
 
 #create initial population
 population = [Individual(genRandMovesSequence()) for _ in range(POPULATION_SIZE)]
 
-#clear old data file
-removeOldDataFile()
-
 #set up main loop variables
 reachedGoal = False
-populationId = -1
+generation = -1
 
 while not reachedGoal:
-    populationId += 1
-    bestIndividual = population[0]
+    generation += 1
     iterator = -1
     for individual in population:
         iterator += 1
@@ -172,15 +170,13 @@ while not reachedGoal:
         individual.fitness = calculateFitness(individual)
         if individual.fitness == 20:
             reachedGoal = True
-            saveToJSON(individual, populationId)
+            saveToJSON(population, generation)
             print("individual has won!")
             time.sleep(2)
             showMoves(individual)
             sys.exit()
-        if individual.fitness > bestIndividual.fitness:
-            bestIndividual = individual
 
+    saveToJSON(population, generation)
     np = crossover(population)
     population = np
     mutate(population)
-    saveToJSON(bestIndividual, populationId)
